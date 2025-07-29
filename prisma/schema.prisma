@@ -1,0 +1,195 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  user_id           String              @id @default(uuid())
+  full_name         String?
+  username          String              @unique
+  password          String
+  role              UserRole
+  address           String
+  phone_number      String
+  gender            Gender
+  data_of_birth     DateTime
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+  group_members     GroupMembers[]
+  groups            Groups[]            @relation("TeacherGroups")
+  gradedSubmissions Submissions[]       @relation("GraderSubmissions")
+  submissions       Submissions[]       @relation("StudentSubmissions")
+  PaymentForStudent PaymentForStudent[]
+  PaymentForTeacher PaymentForTeacher[]
+  images            images[]
+}
+
+model Groups {
+  group_id    String      @id @default(uuid())
+  name        String      @unique
+  description String
+  start_date  DateTime 
+  course_id   String
+  teacher_id  String
+  status      GroupStatus @default(ACTIVE)
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+
+  course            Course              @relation(fields: [course_id], references: [course_id], onDelete: NoAction)
+  teacher           User                @relation("TeacherGroups", fields: [teacher_id], references: [user_id], onDelete: NoAction)
+  group_members     GroupMembers[]
+  lessons           Lessons[]
+  schedules         Schedule[]
+  PaymentForStudent PaymentForStudent[]
+}
+
+model PaymentForStudent {
+  payment_id String      @id @default(uuid())
+  type       PaymentType
+  sum        Int
+  created_at DateTime    @default(now())
+  updated_at DateTime    @updatedAt
+  student_id String
+  group_id   String
+
+  student User   @relation(fields: [student_id], references: [user_id], onDelete: NoAction)
+  group   Groups @relation(fields: [group_id], references: [group_id], onDelete: NoAction)
+}
+
+model PaymentForTeacher {
+  payment_id String      @id @default(uuid())
+  type       PaymentType
+  sum        Int
+  created_at DateTime    @default(now())
+  updated_at DateTime    @updatedAt
+  teacher_id String
+
+  teacher User @relation(fields: [teacher_id], references: [user_id], onDelete: NoAction)
+}
+
+model images {
+  image_id  String  @id @default(uuid())
+  url       String
+  is_worked Boolean
+  user_id   String
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: NoAction)
+}
+
+model GroupMembers {
+  group_members_id String   @id @default(uuid())
+  group_id         String
+  user_id          String
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  group Groups @relation(fields: [group_id], references: [group_id], onDelete: NoAction)
+  user  User   @relation(fields: [user_id], references: [user_id], onDelete: NoAction)
+}
+
+model Lessons {
+  lesson_id      String   @id @default(uuid())
+  group_id       String
+  topic          String
+  lesson_date    DateTime
+  recording_path String
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  group       Groups        @relation(fields: [group_id], references: [group_id], onDelete: NoAction)
+  assignments Assignments[]
+}
+
+model Assignments {
+  assignment_id String   @id @default(uuid())
+  lesson_id     String
+  title         String
+  description   String
+  due_date      DateTime
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  lesson      Lessons       @relation(fields: [lesson_id], references: [lesson_id], onDelete: NoAction)
+  submissions Submissions[]
+}
+
+model Submissions {
+  submission_id String   @id @default(uuid())
+  assignment_id String
+  student_id    String
+  graded_by     String
+  file_path     String
+  grade         String
+  graded_at     DateTime
+  feedback      String
+
+  assignment Assignments @relation(fields: [assignment_id], references: [assignment_id], onDelete: NoAction)
+  graded     User        @relation("GraderSubmissions", fields: [graded_by], references: [user_id], onDelete: NoAction)
+  student    User        @relation("StudentSubmissions", fields: [student_id], references: [user_id], onDelete: NoAction)
+}
+
+model Course {
+  course_id   String       @id @default(uuid())
+  name        String       @unique
+  description String
+  duration    Int
+  status      CourseStatus @default(ACTIVE)
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
+
+  groups Groups[]
+}
+
+model Schedule {
+  schedule_id String   @id @default(uuid())
+  group_id    String
+  day_of_week Int
+  start_time  DateTime
+  end_time    DateTime
+  room        String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  group Groups @relation(fields: [group_id], references: [group_id], onDelete: NoAction)
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  TEACHER
+  STUDENT
+}
+
+enum CourseStatus {
+  ACTIVE
+  INACTIVE
+  DRAFT
+}
+
+enum GroupStatus {
+  ACTIVE
+  INACTIVE
+  COMPLETED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum PaymentType {
+  CASH
+  CREDIT_CARD
+}
